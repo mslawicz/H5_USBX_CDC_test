@@ -1,0 +1,54 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "cppbuild",
+            "command": "cmake",
+            "args": ["--build", "${command:cmake.buildDirectory}", "-j"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "type": "shell",
+            "label": "rebuild project",
+            "command": "cmake",
+            "args": ["--build", "${command:cmake.buildDirectory}", "--clean-first", "-v", "-j"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"],
+        },        
+        {
+            "label": "clean project",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "${command:cmake.buildDirectory}", "--target", "clean"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "flash & run",
+            "type": "shell",
+            "command": "STM32_Programmer_CLI",
+            "args": [
+                "--connect",
+                "port=swd",
+                "--download", "${command:cmake.launchTargetPath}",
+                "-hardRst"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

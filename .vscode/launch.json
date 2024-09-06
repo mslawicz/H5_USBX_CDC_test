@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "configurations": [
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/Debug/H5_USBX_CDC_test.elf",
+            "name": "Debug with OpenOCD",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "interface/stlink-dap.cfg",
+                "target/stm32h5x.cfg"
+            ],
+            "searchDir": [],
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "both",
+            "device": "STM32H563ZI",
+            "svdFile": "./STM32H563.svd"
+        }
+    ]
+}
