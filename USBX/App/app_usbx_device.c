@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +48,9 @@ static UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_acm_parameter;
 static TX_THREAD ux_device_app_thread;
 
 /* USER CODE BEGIN PV */
-
+extern PCD_HandleTypeDef hpcd_USB_DRD_FS;
+static TX_THREAD ux_cdc_write_thread;
+TX_SEMAPHORE semaphore;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -176,6 +178,24 @@ UINT MX_USBX_Device_Init(VOID *memory_ptr)
 
   /* USER CODE BEGIN MX_USBX_Device_Init1 */
 
+  /* Allocate the stack for usbx cdc acm write thread */
+  if (tx_byte_allocate(byte_pool, (VOID **) &pointer, 1024, TX_NO_WAIT) != TX_SUCCESS)
+  {
+    return TX_POOL_ERROR;
+  }
+
+  /*create semaphore to signal user push-button press*/
+  tx_semaphore_create(&semaphore, "semaphore", 1);
+
+  /* Create the usbx_cdc_acm_write_thread_entry thread */
+  if (tx_thread_create(&ux_cdc_write_thread, "cdc_acm_write_usbx_app_thread_entry",
+                       usbx_cdc_acm_write_thread_entry, 1, pointer,
+                       1024, 9, 9, TX_NO_TIME_SLICE,
+                       TX_AUTO_START) != TX_SUCCESS)
+  {
+    return TX_THREAD_ERROR;
+  }
+
   /* USER CODE END MX_USBX_Device_Init1 */
 
   return ret;
@@ -190,6 +210,26 @@ static VOID app_ux_device_thread_entry(ULONG thread_input)
 {
   /* USER CODE BEGIN app_ux_device_thread_entry */
   TX_PARAMETER_NOT_USED(thread_input);
+
+  HAL_PWREx_EnableVddUSB();
+
+  /* USB_DRD_FS init function */
+  MX_USB_PCD_Init();
+
+  /*USB packet memory area configuration*/
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x00, PCD_SNG_BUF, 0x14);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x80, PCD_SNG_BUF, 0x54);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPOUT_ADDR, PCD_SNG_BUF, 0x94);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPIN_ADDR, PCD_SNG_BUF, 0x98);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USBD_CDCACM_EPINCMD_ADDR, PCD_SNG_BUF, 0x9C);
+
+  /* initialize the device controller driver*/
+  ux_dcd_stm32_initialize((ULONG)USB_DRD_FS, (ULONG)&hpcd_USB_DRD_FS);
+
+  /* Start device USB */
+  HAL_PCD_Start(&hpcd_USB_DRD_FS);
+
+  while(1);
   /* USER CODE END app_ux_device_thread_entry */
 }
 
@@ -282,5 +322,11 @@ static UINT USBD_ChangeFunction(ULONG Device_State)
   return status;
 }
 /* USER CODE BEGIN 1 */
-
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == GPIO_PIN_13)
+	{
+		 tx_semaphore_put(&semaphore);
+	}
+}
 /* USER CODE END 1 */
